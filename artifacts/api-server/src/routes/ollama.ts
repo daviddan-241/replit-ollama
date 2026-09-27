@@ -100,7 +100,7 @@ type OllamaChatResponse = {
 };
 
 function hasValidGatewayKey(req: Request): boolean {
-  if (!GATEWAY_API_KEY) return true;
+  if (!GATEWAY_API_KEY) return process.env.NODE_ENV !== "production";
   return req.header("authorization") === `Bearer ${GATEWAY_API_KEY}`;
 }
 

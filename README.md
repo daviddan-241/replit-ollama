@@ -23,7 +23,7 @@ The API server exposes:
 
 `POST /api/v1/chat/completions` accepts standard OpenAI chat payloads and supports Server-Sent Events when `"stream": true`.
 
-Set `OLLAMA_GATEWAY_API_KEY` to require `Authorization: Bearer <key>` on `/api/v1/*`. Without that variable, the gateway is intentionally local-only and does not require a key.
+Set `OLLAMA_GATEWAY_API_KEY` to require `Authorization: Bearer <key>` on `/api/v1/*`. Development stays convenient for the local dashboard without a key; production rejects `/api/v1/*` until this secret is configured.
 
 The Ollama host can be changed with `OLLAMA_BASE_URL`; it defaults to `http://127.0.0.1:11434`.
 
