@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: ollama
+    description: Ollama runtime and model operations
+  - name: openai
+    description: OpenAI-compatible chat operations
 paths:
   /healthz:
     get:
@@ -24,7 +28,130 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /ollama/status:
+    get:
+      operationId: getOllamaStatus
+      tags: [ollama]
+      summary: Get Ollama runtime status
+      responses:
+        "200":
+          description: Ollama runtime status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OllamaStatus"
+  /ollama/catalog:
+    get:
+      operationId: listOllamaCatalog
+      tags: [ollama]
+      summary: List recommended lightweight models
+      responses:
+        "200":
+          description: Recommended model profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OllamaCatalogItem"
+  /ollama/pull:
+    post:
+      operationId: pullOllamaModel
+      tags: [ollama]
+      summary: Start pulling an approved lightweight model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OllamaPullInput"
+      responses:
+        "202":
+          description: Pull accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OllamaPullResponse"
+        "400":
+          description: Model is not approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Ollama is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/models:
+    get:
+      operationId: listOllamaModels
+      tags: [openai]
+      summary: List installed models in OpenAI format
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Installed Ollama models
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenAiModelList"
+        "401":
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/chat/completions:
+    post:
+      operationId: createOllamaChatCompletion
+      tags: [openai]
+      summary: Create an Ollama chat completion
+      description: Supports standard JSON responses and Server-Sent Events when stream is true.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatCompletionInput"
+      responses:
+        "200":
+          description: Chat completion or a text/event-stream response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatCompletion"
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: API key required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Ollama request failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: OllamaGatewayKey
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +160,200 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    OllamaStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        endpoint:
+          type: string
+        version:
+          type: ["string", "null"]
+        modelCount:
+          type: integer
+        apiKeyConfigured:
+          type: boolean
+        runtime:
+          type: string
+      required:
+        - connected
+        - endpoint
+        - version
+        - modelCount
+        - apiKeyConfigured
+        - runtime
+    OllamaCatalogItem:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        family:
+          type: string
+        size:
+          type: string
+        purpose:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        recommended:
+          type: boolean
+        pullCommand:
+          type: string
+      required:
+        - name
+        - label
+        - family
+        - size
+        - purpose
+        - capabilities
+        - recommended
+        - pullCommand
+    OllamaPullInput:
+      type: object
+      properties:
+        model:
+          type: string
+      required:
+        - model
+    OllamaPullResponse:
+      type: object
+      properties:
+        accepted:
+          type: boolean
+        model:
+          type: string
+        message:
+          type: string
+      required:
+        - accepted
+        - model
+        - message
+    OllamaModel:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created:
+          type: integer
+        ownedBy:
+          type: string
+        size:
+          type: ["integer", "null"]
+        digest:
+          type: ["string", "null"]
+      required:
+        - id
+        - object
+        - created
+        - ownedBy
+        - size
+        - digest
+    OpenAiModelList:
+      type: object
+      properties:
+        object:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/OllamaModel"
+      required:
+        - object
+        - data
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, tool]
+        content:
+          type: string
+      required:
+        - role
+        - content
+    ChatCompletionInput:
+      type: object
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        stream:
+          type: boolean
+          default: false
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        max_tokens:
+          type: integer
+          minimum: 1
+      required:
+        - model
+        - messages
+    ChatCompletionChoice:
+      type: object
+      properties:
+        index:
+          type: integer
+        message:
+          $ref: "#/components/schemas/ChatMessage"
+        finish_reason:
+          type: ["string", "null"]
+      required:
+        - index
+        - message
+        - finish_reason
+    ChatCompletionUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
+    ChatCompletion:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatCompletionChoice"
+        usage:
+          $ref: "#/components/schemas/ChatCompletionUsage"
+      required:
+        - id
+        - object
+        - created
+        - model
+        - choices
+        - usage
 

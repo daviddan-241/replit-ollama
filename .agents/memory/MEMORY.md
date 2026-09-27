@@ -1,0 +1,1 @@
+- [Local Ollama runtime](ollama-runtime.md) — keep CPU inference to one loaded model; large model pulls can exceed the workspace model-storage quota.

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Ollama Control"
+description = "A mobile-friendly control panel and OpenAI-compatible streaming gateway for running lightweight Ollama models, checking availability, and connecting chat clients."
+version = "1.0.0"
+id = "artifacts/ollama-control"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22496
+
+[services.development]
+run = "pnpm --filter @workspace/ollama-control run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ollama-control", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ollama-control/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22496"
+BASE_PATH = "/"
